@@ -128,22 +128,24 @@ def prepare_image(file_dir, size):
     image = tf.cast(image, tf.float32)
     return image
 
-# Get the current working directory
-current_directory = os.getcwd()
+# Function to reconstruct content and style image
+def reconstruct_image(content_image, style_image):
+    # Preparing content and style format
+    prepared_content = prepare_image(content_image, 224)
+    prepared_style = prepare_image(style_image, 224)
+    # Process array to model
+    style_encoded = model.encoder(prepared_style)
+    content_encoded = model.encoder(prepared_content)
+    mapped = adain(style=style_encoded, content=content_encoded)
+    reconstructed_image = model.decoder(mapped)
+    reconstructed_image = reconstructed_image * 255.0
 
-# Define saved model folder path 
-saved_model_dir = os.path.join(current_directory, 'Adain 500 Epochs')
+    image_pil = Image.fromarray(np.uint8(reconstructed_image[0]))
+    buffered = io.BytesIO()
+    image_pil.save(buffered, format="JPEG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
 
-model = tf.saved_model.load(saved_model_dir)
-
-
-# Define content and style directory name
-contents_directory = "contents"
-styles_directory = "styles"
-
-# Define content_image and style_image variables at the beginning
-content_image = None
-style_image = None
+    return img_str
 
 # Fucntion to upload image
 def image_uploader(directory, label):
@@ -172,6 +174,24 @@ def create_directory(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
+
+# Dashboard development section
+
+# Get the current working directory
+current_directory = os.getcwd()
+
+# Define saved model folder path and load the model
+saved_model_dir = os.path.join(current_directory, 'Adain 500 Epochs')
+model = tf.saved_model.load(saved_model_dir)
+
+# Define content and style directory name
+contents_directory = "contents"
+styles_directory = "styles"
+
+# Define content_image and style_image variables at the beginning
+content_image = None
+style_image = None
+
 # Clear all directories on app start
 clear_directory(contents_directory)
 clear_directory(styles_directory)
@@ -181,8 +201,6 @@ create_directory(contents_directory)
 create_directory(styles_directory)
 
 st.markdown('<h1 style="line-height:2; color:#007acc; max-width:1900px;">Neural Style Transfer with AdaIN Method</h1>', unsafe_allow_html=True)
-
-
 
 col1, col2 = st.columns([1, 1])
 
@@ -198,24 +216,6 @@ with col2:
 st.write('')
 st.markdown('---')
 
-def reconstruct_image(content_image, style_image):
-    # Preparing content and style format
-    prepared_content = prepare_image(content_image, 224)
-    prepared_style = prepare_image(style_image, 224)
-    # Process array to model
-    style_encoded = model.encoder(prepared_style)
-    content_encoded = model.encoder(prepared_content)
-    mapped = adain(style=style_encoded, content=content_encoded)
-    reconstructed_image = model.decoder(mapped)
-    reconstructed_image = reconstructed_image * 255.0
-
-    image_pil = Image.fromarray(np.uint8(reconstructed_image[0]))
-    buffered = io.BytesIO()
-    image_pil.save(buffered, format="JPEG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
-
-    return img_str
-
 col1, col2,col3 = st.columns([1.6,1,1])
 
 with col1:
@@ -227,9 +227,6 @@ with col2:
 with col3:
     pass
 
-
 if 'img_str' in locals():
-    st.image(
-        f"data:image/jpeg;base64,{img_str}",
-        caption='Reconstructed Image Resized in 224 x 224',
-        use_column_width='True')
+    image_html = f'<img src="data:image/jpeg;base64,{img_str}" style="display: block; margin-left: auto; margin-right: auto;" />'
+    st.markdown(image_html, unsafe_allow_html=True)
