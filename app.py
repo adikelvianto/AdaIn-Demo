@@ -3,7 +3,6 @@ import os, io, shutil, base64
 import numpy as np
 from PIL import Image
 import streamlit as st
-import matplotlib.pyplot as plt
 
 # Model Function
 def create_encoder():
